@@ -1,27 +1,28 @@
 use std::{ thread::sleep, time::Duration};
-
 use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
 
 async fn main() {
-	let mut h2o = particle_create();
+	let h2o = particle_create();
    	loop
 	{
 		let frametime = Duration::new(0, 1000000000/FPS);
+		draw(h2o);
 		sleep(frametime);
 		next_frame().await;
    	}
 }
 
-fn collisions()
-{	
-}
-
-fn draw(pticle: &Particle)
+fn draw(mut pticle: Particle)
 {
 	clear_background(WHITE);
-	draw_circle(pticle.pos_x as f32, pticle.pos_y as f32, pticle.radius, pticle.color);
+	if (is_mouse_button_down(MouseButton::Left))
+	{
+		pticle.position= mouse_position();
+		
+	}
+	draw_circle(pticle.position.0, pticle.position.1, pticle.radius, pticle.color);
 } 
 
 const GRAVITY:f32 = 9.81;
@@ -31,16 +32,14 @@ fn particle_create() -> Particle
 {
 	let waterparticle = Particle
 	{
-		pos_x: 55.0,
-		pos_y: 55.0,
+		position: mouse_position(),
 		delta_v_x: 0.0,
 		delta_v_y: 0.0,
-
 		mass: 10.0,
 		viscosity: 1.0,
-
 		color: color_u8!(0,0,255,120),
 		radius: 5.0,
+		temperature: 20.0,
 	};
 	return waterparticle;
 }
@@ -48,14 +47,14 @@ fn particle_create() -> Particle
 #[derive(Copy, Clone)]
 struct Particle 
 {
-	pos_x: f32,
-	pos_y: f32,
+	position: (f32, f32),
 	delta_v_x: f32,
 	delta_v_y: f32,
 
 	mass: f32,
 	viscosity: f32,
-
 	color: Color,
 	radius: f32,
+	temperature: f32,
+
 }
