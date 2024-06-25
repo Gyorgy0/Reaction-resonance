@@ -1,60 +1,37 @@
-use std::{ thread::sleep, time::Duration};
-use macroquad::prelude::*;
+use macroquad::{prelude::*};
 
 #[macroquad::main("Particle Simulator")]
 
 async fn main() {
-	let h2o = particle_create();
    	loop
 	{
-		let frametime = Duration::new(0, 1000000000/FPS);
-		draw(h2o);
-		sleep(frametime);
+		clear_background(BLUE);
+		for i in 1..=(screen_height() as u32/CELLSIZE as u32) as i32 {
+			for j in 1..=(screen_width() as u32/CELLSIZE as u32) as i32  {
+			}
+		}
 		next_frame().await;
    	}
 }
 
-fn draw(mut pticle: Particle)
-{
-	clear_background(WHITE);
-	if (is_mouse_button_down(MouseButton::Left))
-	{
-		pticle.position= mouse_position();
-		
-	}
-	draw_circle(pticle.position.0, pticle.position.1, pticle.radius, pticle.color);
-} 
+const CELLSIZE:u32 = 10;
 
 const GRAVITY:f32 = 9.81;
 const FPS:u32 = 60;
 
-fn particle_create() -> Particle
+static WATER:Particle = Particle
 {
-	let waterparticle = Particle
-	{
-		position: mouse_position(),
-		delta_v_x: 0.0,
-		delta_v_y: 0.0,
-		mass: 10.0,
-		viscosity: 1.0,
-		color: color_u8!(0,0,255,120),
-		radius: 5.0,
-		temperature: 20.0,
-	};
-	return waterparticle;
-}
+	material_id: 1,
+	mass: 1.0,
+	viscosity: 1.0,
+	color: BLUE,
+};
 
 #[derive(Copy, Clone)]
 struct Particle 
 {
-	position: (f32, f32),
-	delta_v_x: f32,
-	delta_v_y: f32,
-
-	mass: f32,
-	viscosity: f32,
-	color: Color,
-	radius: f32,
-	temperature: f32,
-
+	material_id: u16, // the identification number that helps identifying the material in the cell array
+	mass: f32, // mass of a cm^3 volume of the material
+	viscosity: f32, // viscosity of the material -> higher number = thicker material (viscosity of water is 1)
+	color: Color, // color of the material
 }
