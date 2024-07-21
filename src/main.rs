@@ -1,20 +1,18 @@
+use std::cell;
+
 use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
 
 async fn main() {
     let mut start: bool = true;
-    let mut game_board = vec![];
     let row_count = 50;
     let col_count = 50;
+    let mut game_board = SetupBoard(row_count, col_count);
     loop {
-        if start {
-            game_board = SetupBoard(row_count, col_count);
-            start = false;
-        }
         clear_background(RED);
-        DrawBoard(&game_board, row_count, col_count);
         game_board = UpdateBoard(&mut game_board, row_count, col_count);
+        DrawBoard(&game_board, row_count, col_count);
         next_frame().await;
     }
 }
@@ -49,47 +47,29 @@ fn DrawBoard(game_board: &Vec<Particle>, row_count: i32, col_count: i32) {
 fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -> Vec<Particle> {
     for i in 0..row_count {
         for j in 0..col_count {
-            let mut cell: Particle = game_board[((i * col_count) + j) as usize];
-            cell.1.y += (cell.0.mass * GRAVITY * get_frame_time());
-            if (cell.0.mass > 0.0) {
-                if (i + (cell.1.y as i32 - 1)) < row_count - 1 && (!cell.2) && cell.1.y > 1.0 {
-                    let tmp: Particle =
-                        game_board[(((i + cell.1.y as i32) * col_count) + j) as usize];
-                    game_board[(((i + cell.1.y as i32) * col_count) + j) as usize] = cell;
-                    game_board[(((i + cell.1.y as i32) * col_count) + j) as usize].2 = true;
-                    game_board[((i * col_count) + j) as usize] = tmp;
-                } else if ((i as i32 - 1) - (row_count - 1)) < cell.1.y as i32
-                    && (!cell.2)
-                    && cell.1.y > 1.0
+            let cellpos:usize = (i * col_count + j) as usize;
+            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * get_frame_time();
+            for _k in 0..game_board[cellpos].1.y as i32
+            {
+                if ((i + _k) < (row_count) && game_board[cellpos].0.mass > game_board[((i+_k)*col_count + j) as usize].0.mass && game_board[cellpos].2)
                 {
-                    cell.1.y = (-1.0) * ((i as i32) - (row_count - 1)) as f32;
-                    let tmp: Particle =
-                        game_board[(((i + cell.1.y as i32) * col_count) + j) as usize];
-                    game_board[(((i + cell.1.y as i32) * col_count) + j) as usize] = cell;
-                    game_board[(((i + cell.1.y as i32) * col_count) + j) as usize]
-                        .1
-                        .y = 0.0;
-                    game_board[(((i + cell.1.y as i32) * col_count) + j) as usize].2 = true;
-                    game_board[((i * col_count) + j) as usize] = tmp;
-                } else if (cell.1.y < 1.0) {
-                    game_board[((i * col_count) + j) as usize].1.y = cell.1.y;
+                    let tmp = game_board[cellpos as usize];
+                    game_board[cellpos as usize] = game_board[(((i+_k) * col_count) + j) as usize];
+                    game_board[(((i+_k) * col_count) + j) as usize] = tmp;
+                    game_board[(((i+_k) * col_count) + j) as usize].2 = false;
                 }
             }
-        }
-    }
-    for i in 0..row_count {
-        for j in 0..col_count {
-            game_board[((i * col_count) + j) as usize].2 = false;
+            game_board[cellpos].2 = true;
         }
     }
     let btn: MouseButton = MouseButton::Left;
     let rbtn: MouseButton = MouseButton::Right;
     if is_mouse_button_down(btn) {
         let cursor_position = mouse_position();
-        if (cursor_position.0 > 10.0
-            && cursor_position.0 < 510.0
-            && cursor_position.1 > 10.0
-            && cursor_position.1 < 510.0)
+        if (cursor_position.0 > CELLSIZE as f32
+            && cursor_position.0 < (CELLSIZE + (CELLSIZE * col_count as u32)) as f32
+            && cursor_position.1 > CELLSIZE as f32
+            && cursor_position.1 < (CELLSIZE + (CELLSIZE * col_count as u32)) as f32)
         {
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
             let y = (cursor_position.1 as u32 / CELLSIZE) - 1;
@@ -99,10 +79,10 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
     }
     if is_mouse_button_down(rbtn) {
         let cursor_position = mouse_position();
-        if (cursor_position.0 > 10.0
-            && cursor_position.0 < 510.0
-            && cursor_position.1 > 10.0
-            && cursor_position.1 < 510.0)
+        if (cursor_position.0 > CELLSIZE as f32
+            && cursor_position.0 < (CELLSIZE + (CELLSIZE * col_count as u32)) as f32
+            && cursor_position.1 > CELLSIZE as f32
+            && cursor_position.1 < (CELLSIZE + (CELLSIZE * col_count as u32)) as f32)
         {
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
             let y = (cursor_position.1 as u32 / CELLSIZE) - 1;
