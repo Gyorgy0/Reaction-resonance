@@ -58,6 +58,11 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
                     game_board[(((i+_k) * col_count) + j) as usize] = tmp;
                     game_board[(((i+_k) * col_count) + j) as usize].2 = false;
                 }
+                else if ((i + _k) >= (row_count))
+                {
+                    game_board[cellpos].1.y = f32::abs((i-row_count) as f32);
+                    continue;
+                }
             }
             game_board[cellpos].2 = true;
         }
@@ -74,7 +79,7 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
             let y = (cursor_position.1 as u32 / CELLSIZE) - 1;
             game_board[(y * col_count as u32 + x) as usize] =
-                Particle(WATER, vec2(0.0, 0.0), false);
+                Particle(WATER, vec2(0.0, 2.0), false);
         }
     }
     if is_mouse_button_down(rbtn) {
@@ -86,7 +91,7 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
         {
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
             let y = (cursor_position.1 as u32 / CELLSIZE) - 1;
-            game_board[(y * col_count as u32 + x) as usize] = Particle(SAND, vec2(0.0, 0.0), false);
+            game_board[(y * col_count as u32 + x) as usize] = Particle(SAND, vec2(0.0, 2.0), false);
         }
     }
     return game_board.to_vec();
