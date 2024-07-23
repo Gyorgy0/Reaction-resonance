@@ -1,16 +1,15 @@
-use std::cell;
-
 use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
 
 async fn main() {
-    let mut start: bool = true;
-    let row_count = 50;
-    let col_count = 50;
+    let row_count = 100;
+    let col_count = 100;
     let mut game_board = SetupBoard(row_count, col_count);
     loop {
         clear_background(RED);
+        let text = format!("FPS: {0}", get_fps());
+        draw_text(&text, 40.0, 40.0, 55.0, YELLOW);
         game_board = UpdateBoard(&mut game_board, row_count, col_count);
         DrawBoard(&game_board, row_count, col_count);
         next_frame().await;
@@ -35,7 +34,7 @@ fn DrawBoard(game_board: &Vec<Particle>, row_count: i32, col_count: i32) {
             let cell: Particle = game_board[((i * col_count) + j) as usize];
             draw_rectangle(
                 ((j + 1) as u32 * CELLSIZE) as f32,
-                ((i + 1) as u32 * CELLSIZE) as f32,
+                ((i + 1) as u32 * CELLSIZE) as f32 + 60.0,
                 CELLSIZE as f32,
                 CELLSIZE as f32,
                 cell.0.color,
@@ -60,7 +59,7 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
                 }
                 else if ((i + _k) >= (row_count))
                 {
-                    game_board[cellpos].1.y = f32::abs((i-row_count) as f32);
+                    game_board[cellpos].1.y = f32::abs((i-(row_count-1)) as f32);
                     continue;
                 }
             }
@@ -97,7 +96,7 @@ fn UpdateBoard(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) -
     return game_board.to_vec();
 }
 
-const CELLSIZE: u32 = 10;
+const CELLSIZE: u32 = 5;
 const GRAVITY: f32 = 9.81;
 
 static VOID: Material = Material {
