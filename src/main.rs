@@ -62,8 +62,8 @@ fn update_board(game_board: &mut [Particle], row_count: i32, col_count: i32) -> 
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
                     continue;
                 }
-                game_board[cellpos].2 = true;
             }
+            game_board[cellpos].2 = true;
         }
     }
     handle_mouse_input(game_board, row_count, col_count);
@@ -89,8 +89,6 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             };
             game_board[(y * col_count as u32 + x) as usize] =
                 Particle(material, vec2(0.0, 1.0), false);
-            solve_particle(SAND.phase);
-            solve_particle(VOID.phase);
         }
     }
 }
