@@ -1,7 +1,6 @@
 use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
-
 async fn main() {
     let row_count = 100; // Number of rows
     let col_count = 100; // Number of collumns
@@ -21,8 +20,7 @@ async fn main() {
 
 fn setup_board(row_count: i32, col_count: i32) -> Vec<Particle> {
     let cell_count = row_count * col_count;
-    let mut game_board: Vec<Particle> =
-        vec![Particle(VOID, vec2(0.0, 0.0), false); cell_count as usize];
+    let mut game_board: Vec<Particle> = vec![Particle(VOID, vec2(0.0, 0.0), false); cell_count as usize];
     for i in 0..row_count {
         for j in 0..col_count {
             game_board[(i * col_count + j) as usize] = Particle(VOID, vec2(0.0, 0.0), false);
@@ -36,8 +34,8 @@ fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
         for j in 0..col_count {
             let cell: Particle = game_board[((i * col_count) + j) as usize];
             draw_rectangle(
-                ((j + 1) as u32 * CELLSIZE) as f32,
-                ((i + 1) as u32 * CELLSIZE) as f32 + 60.0,
+                (j as u32 * CELLSIZE) as f32,
+                (i as u32 * CELLSIZE) as f32 + 60.0,
                 CELLSIZE as f32,
                 CELLSIZE as f32,
                 cell.0.color,
@@ -64,8 +62,8 @@ fn update_board(game_board: &mut [Particle], row_count: i32, col_count: i32) -> 
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
                     continue;
                 }
+                game_board[cellpos].2 = true;
             }
-            game_board[cellpos].2 = true;
         }
     }
     handle_mouse_input(game_board, row_count, col_count);
