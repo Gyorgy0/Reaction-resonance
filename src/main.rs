@@ -20,7 +20,8 @@ async fn main() {
 
 fn setup_board(row_count: i32, col_count: i32) -> Vec<Particle> {
     let cell_count = row_count * col_count;
-    let mut game_board: Vec<Particle> = vec![Particle(VOID, vec2(0.0, 0.0), false); cell_count as usize];
+    let mut game_board: Vec<Particle> =
+        vec![Particle(VOID, vec2(0.0, 0.0), false); cell_count as usize];
     for i in 0..row_count {
         for j in 0..col_count {
             game_board[(i * col_count + j) as usize] = Particle(VOID, vec2(0.0, 0.0), false);
@@ -45,25 +46,16 @@ fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
 }
 
 fn update_board(game_board: &mut [Particle], row_count: i32, col_count: i32) -> Vec<Particle> {
-    let frame_time = get_frame_time();
     for i in 0..row_count {
         for j in 0..col_count {
-            let cellpos: usize = (i * col_count + j) as usize;
-            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
-            for _k in 0..game_board[cellpos].1.y as i32 {
-                if (i + _k) < (row_count)
-                    && game_board[cellpos].0.mass
-                        > game_board[((i + _k) * col_count + j) as usize].0.mass
-                    && game_board[cellpos].2
-                {
-                    game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
-                    game_board[(((i + _k) * col_count) + j) as usize].2 = false;
-                } else if (i + _k) >= (row_count) {
-                    game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
-                    continue;
-                }
-            }
-            game_board[cellpos].2 = true;
+            solve_particle(
+                game_board,
+                game_board[(i * row_count + j) as usize].0.phase,
+                row_count,
+                col_count,
+                i,
+                j,
+            )
         }
     }
     handle_mouse_input(game_board, row_count, col_count);
@@ -109,26 +101,56 @@ enum Phase {
     Plasma { viscosity: f32 },
 }
 
-fn solve_particle(phase: Phase) {
+fn solve_particle(
+    game_board: &mut [Particle],
+    phase: Phase,
+    row_count: i32,
+    col_count: i32,
+    i: i32,
+    j: i32,
+) {
+    let frame_time = get_frame_time();
     match phase {
-        Phase::Void => {
-            println!("Lorem!")
-        }
-        Phase::Solid { hardness: _u8 } => {
-            println!("Ipsum!")
-        }
+        Phase::Void => {}
+        Phase::Solid { hardness: _u8 } => {}
         Phase::Powder { coarseness: _f32 } => {
-            println!("Dolor!")
+            let cellpos: usize = (i * col_count + j) as usize;
+            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
+            for _k in 0..game_board[cellpos].1.y as i32 {
+                if (i + _k) < (row_count)
+                    && game_board[cellpos].0.mass
+                        > game_board[((i + _k) * col_count + j) as usize].0.mass
+                    && game_board[cellpos].2
+                {
+                    game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
+                    game_board[(((i + _k) * col_count) + j) as usize].2 = false;
+                } else if (i + _k) >= (row_count) {
+                    game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
+                    continue;
+                }
+            }
+            game_board[cellpos].2 = true;
         }
         Phase::Liquid { viscosity: _f32 } => {
-            println!("Sit!")
+            let cellpos: usize = (i * col_count + j) as usize;
+            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
+            for _k in 0..game_board[cellpos].1.y as i32 {
+                if (i + _k) < (row_count)
+                    && game_board[cellpos].0.mass
+                        > game_board[((i + _k) * col_count + j) as usize].0.mass
+                    && game_board[cellpos].2
+                {
+                    game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
+                    game_board[(((i + _k) * col_count) + j) as usize].2 = false;
+                } else if (i + _k) >= (row_count) {
+                    game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
+                    continue;
+                }
+            }
+            game_board[cellpos].2 = true;
         }
-        Phase::Gas { viscosity: _f32 } => {
-            println!("Amet!")
-        }
-        Phase::Plasma { viscosity: _f32 } => {
-            println!("Consectetur!")
-        }
+        Phase::Gas { viscosity: _f32 } => {}
+        Phase::Plasma { viscosity: _f32 } => {}
     }
 }
 
@@ -161,11 +183,11 @@ struct Material {
     mass: f32,         // Mass of a cm^3 volume of the material
     phase: Phase,      // Phase of the material for the implemented phases check the "Phase" enum
     flammability: f32, // Flammability of material -> higher number = more flammable (the flammability is calculated using normal atmospheric conditions (1 bar - 100 000 Pa pressure, 21% oxygen, 78% nitrogen))
-    color: Color,      // color of the material
+    color: Color,      // Color of the material
 }
 
 #[derive(Copy, Clone)]
 struct Particle(Material, Vec2, bool);
-// 0 (Material) - 	material of the particle
-// 1 (Vec2) - 		vectors of the particle (x, y)
-// 2 (bool) -       is it updated
+// 0 (Material) - 	Material of the particle
+// 1 (Vec2) - 		Vectors of the particle (x, y)
+// 2 (bool) -       Is it updated?
