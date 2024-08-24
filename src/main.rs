@@ -5,15 +5,26 @@ async fn main() {
     let row_count = 100; // Number of rows
     let col_count = 100; // Number of collumns
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
+    let mut is_stopped = false;
     loop {
         clear_background(RED);
-        draw_text(&format!("FPS: {0}", get_fps()), 40.0, 40.0, 55.0, YELLOW); // Displays the FPS of the game
+        if is_stopped {
+            draw_text(
+                &format!("FPS: {0}", get_fps()),
+                40.0,
+                40.0,
+                55.0,
+                color_u8!(150, 0, 0, 255),
+            ); // Displays the FPS of the game
+        } else if !is_stopped {
+            draw_text(&format!("FPS: {0}", get_fps()), 40.0, 40.0, 55.0, YELLOW);
+            // Displays the FPS of the game
+        }
 
-        game_board = update_board(&mut game_board, row_count, col_count); // This function updates the state of the particles on the game_board
-
+        game_board = update_board(&mut game_board, row_count, col_count, is_stopped); // This function updates the state of the particles on the game_board
         draw_board(&game_board, row_count, col_count); // This function draws the game_board
 
-        handle_key_inputs(&mut game_board, row_count, col_count); // This function monitors the pressed keys
+        is_stopped = handle_key_inputs(&mut game_board, row_count, col_count, is_stopped); // This function monitors the pressed keys
         next_frame().await;
     }
 }
@@ -35,7 +46,7 @@ fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
         for j in 0..col_count {
             let cell: Particle = game_board[((i * col_count) + j) as usize];
             draw_rectangle(
-                (j as u32 * CELLSIZE) as f32,
+                (j as u32 * CELLSIZE) as f32 + 5.0,
                 (i as u32 * CELLSIZE) as f32 + 60.0,
                 CELLSIZE as f32,
                 CELLSIZE as f32,
@@ -45,17 +56,24 @@ fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
     }
 }
 
-fn update_board(game_board: &mut [Particle], row_count: i32, col_count: i32) -> Vec<Particle> {
+fn update_board(
+    game_board: &mut [Particle],
+    row_count: i32,
+    col_count: i32,
+    is_stopped: bool,
+) -> Vec<Particle> {
     for i in 0..row_count {
         for j in 0..col_count {
-            solve_particle(
-                game_board,
-                game_board[(i * row_count + j) as usize].0.phase,
-                row_count,
-                col_count,
-                i,
-                j,
-            )
+            if !is_stopped {
+                solve_particle(
+                    game_board,
+                    game_board[(i * row_count + j) as usize].0.phase,
+                    row_count,
+                    col_count,
+                    i,
+                    j,
+                )
+            }
         }
     }
     handle_mouse_input(game_board, row_count, col_count);
@@ -73,11 +91,11 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             && cursor_position.1 < (CELLSIZE * row_count as u32) as f32
         {
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
-            let y = ((cursor_position.1 - 55.0) as u32 / CELLSIZE) - 1;
+            let y = ((cursor_position.1 - 60.0) as u32 / CELLSIZE) - 1;
             let material = if is_mouse_button_down(btn) {
                 WATER
             } else {
-                SAND
+                WOOD
             };
             game_board[(y * col_count as u32 + x) as usize] =
                 Particle(material, vec2(0.0, 1.0), false);
@@ -85,13 +103,22 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
     }
 }
 
-fn handle_key_inputs(game_board: &mut Vec<Particle>, row_count: i32, col_count: i32) {
+fn handle_key_inputs(
+    game_board: &mut Vec<Particle>,
+    row_count: i32,
+    col_count: i32,
+    mut is_stopped: bool,
+) -> bool {
     if is_key_pressed(KeyCode::R) {
         *game_board = setup_board(row_count, col_count);
     }
+    if is_key_pressed(KeyCode::Space) {
+        is_stopped = !is_stopped;
+    }
+    is_stopped
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 enum Phase {
     Void,
     Solid { hardness: u8 },
@@ -142,7 +169,8 @@ fn solve_particle(
                 {
                     game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
                     game_board[(((i + _k) * col_count) + j) as usize].2 = false;
-                } else if (i + _k) >= (row_count) {
+                } else if (i + _k) >= (row_count)
+                {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
                     continue;
                 }
@@ -167,7 +195,7 @@ static VOID: Material = Material {
 static WATER: Material = Material {
     mass: 1.0,
     phase: Phase::Liquid { viscosity: 1.0 },
-    flammability: 1.0,
+    flammability: 0.0,
     color: BLUE,
 };
 
@@ -176,6 +204,13 @@ static SAND: Material = Material {
     phase: Phase::Powder { coarseness: 1.0 },
     flammability: 0.0,
     color: color_u8!(203, 189, 147, 255),
+};
+
+static WOOD: Material = Material {
+    mass: 1.0,
+    phase: Phase::Solid { hardness: 3 },
+    flammability: 10.0,
+    color: BROWN,
 };
 
 #[derive(Copy, Clone)]
