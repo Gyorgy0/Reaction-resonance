@@ -1,0 +1,26 @@
+Physics / material types:
+
+- Powder physics
+- Liquid physics
+- Gas physics
+- Plasma physics
+- Explosives
+- Oxidizers
+- Acids
+- Bases
+- Plants
+- Mushrooms
+
+
+UI:
+- Reset button
+- Material buttons
+- Material searchbar
+- Zoom functionality
+- Adjustable grid
+- Material categories
+
+
+External storage / file management
+- Saving / loading of the game_board
+- Materials in separate files according to their categories
