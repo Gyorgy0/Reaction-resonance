@@ -93,7 +93,7 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let x = (cursor_position.0 as u32 / CELLSIZE) - 1;
             let y = ((cursor_position.1 - 60.0) as u32 / CELLSIZE) - 1;
             let material = if is_mouse_button_down(btn) {
-                WATER
+                SAND
             } else {
                 WOOD
             };
@@ -122,7 +122,7 @@ fn handle_key_inputs(
 enum Phase {
     Void,
     Solid { hardness: u8 },
-    Powder { coarseness: f32 },
+    Powder { coarseness: f32 },     // Coarseness is the average diameter of a powder particle (between 0 and 1) (in cm), -> , the powder is less stackable it'll flow to the sides like a liquid
     Liquid { viscosity: f32 },
     Gas { viscosity: f32 },
     Plasma { viscosity: f32 },
@@ -154,6 +154,16 @@ fn solve_particle(
                 } else if (i + _k) >= (row_count) {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
                     continue;
+                }
+                else if game_board[((i + _k) * col_count + j) as usize].0.phase == (Phase::Solid{hardness: 3}) && game_board[cellpos].1.y !=0.0
+                {
+                    game_board[cellpos].1.y -= 1.0;
+                    continue;
+                }
+                else if game_board[cellpos].0.mass
+                > game_board[((i + _k) * col_count + j) as usize].0.mass
+                {
+                    // Powder like behaviour here
                 }
             }
             game_board[cellpos].2 = true;
@@ -201,13 +211,13 @@ static WATER: Material = Material {
 
 static SAND: Material = Material {
     mass: 1.682,
-    phase: Phase::Powder { coarseness: 1.0 },
+    phase: Phase::Powder { coarseness: 0.2 },
     flammability: 0.0,
     color: color_u8!(203, 189, 147, 255),
 };
 
 static WOOD: Material = Material {
-    mass: 1.0,
+    mass: 2.0,
     phase: Phase::Solid { hardness: 3 },
     flammability: 10.0,
     color: BROWN,
