@@ -196,20 +196,20 @@ fn solve_particle(
                 if (game_board[cellpos].0.mass
                     <= game_board[((i + 1) * col_count + j) as usize].0.mass
                     || game_board[((i + 1) * col_count + j) as usize].0.phase == Phase::Solid)
-                    && phase.get_coarseness() <= game_board[cellpos].3 && !game_board[cellpos].2
+                    && (phase.get_coarseness()*4.0) >= game_board[cellpos].3
                 {
                     if game_board[(i * col_count + j + 1) as usize].0.mass
-                        < game_board[cellpos].0.mass && game_board[(i * col_count + j + 1) as usize].0.phase
-                        != Phase::Solid
-                        && game_board[((i+1) * col_count + j + 1) as usize].0.mass
+                        < game_board[cellpos].0.mass
+                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid 
+                        && game_board[((i + 1) * col_count + j + 1) as usize].0.mass
                             < game_board[cellpos].0.mass
                     {
                         game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
-                    } else if game_board[(i * col_count + j - 1) as usize].0.mass
+                    } 
+                    else if game_board[(i * col_count + j - 1) as usize].0.mass
                         < game_board[cellpos].0.mass
-                        && game_board[(i * col_count + j + 1) as usize].0.phase
-                        != Phase::Solid
-                        && game_board[((i+1) * col_count + j - 1) as usize].0.mass
+                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
+                        && game_board[((i + 1) * col_count + j - 1) as usize].0.mass
                             < game_board[cellpos].0.mass
                     {
                         game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
@@ -265,7 +265,7 @@ static WATER: Material = Material {
 
 static SAND: Material = Material {
     mass: 1.682,
-    phase: Phase::Powder { coarseness: 0.1 },
+    phase: Phase::Powder { coarseness: 0.3 },
     durability: 50,
     flammability: 0.0,
     color: color_u8!(203, 189, 147, 255),
