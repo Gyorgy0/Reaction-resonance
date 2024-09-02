@@ -32,10 +32,15 @@ async fn main() {
 fn setup_board(row_count: i32, col_count: i32) -> Vec<Particle> {
     let cell_count = row_count * col_count;
     let mut game_board: Vec<Particle> =
-        vec![Particle(VOID, vec2(0.0, 0.0), false); cell_count as usize];
+        vec![Particle(VOID, vec2(0.0, 0.0), false, 0.0); cell_count as usize];
     for i in 0..row_count {
         for j in 0..col_count {
-            game_board[(i * col_count + j) as usize] = Particle(VOID, vec2(0.0, 0.0), false);
+            game_board[(i * col_count + j) as usize] = Particle(
+                VOID,
+                vec2(0.0, 0.0),
+                false,
+                rand::gen_range(0.0_f32, 1.0_f32),
+            );
         }
     }
     game_board
@@ -97,8 +102,12 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             } else {
                 WOOD
             };
-            game_board[(y * col_count as u32 + x) as usize] =
-                Particle(material, vec2(0.0, 1.0), false);
+            game_board[(y * col_count as u32 + x) as usize] = Particle(
+                material,
+                vec2(0.0, 0.0),
+                true,
+                game_board[(y * col_count as u32 + x) as usize].3,
+            );
         }
     }
 }
@@ -132,7 +141,7 @@ impl Phase {
     fn get_coarseness(&self) -> f32 {
         let mut returnval: f32 = 0.0;
         if let Phase::Powder { coarseness } = self {
-            returnval = *coarseness;
+            returnval = *coarseness
         };
         returnval
     }
@@ -168,23 +177,43 @@ fn solve_particle(
         Phase::Powder { coarseness: _f32 } => {
             let cellpos: usize = (i * col_count + j) as usize;
             game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
-            for _k in 0..game_board[cellpos].1.y as i32 {
+            for _k in 0..(game_board[cellpos].1.y + 1.0) as i32 {
                 if (i + _k) < (row_count)
                     && game_board[cellpos].0.mass
                         > game_board[((i + _k) * col_count + j) as usize].0.mass
                     && game_board[cellpos].2
                 {
                     game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
-                    game_board[(((i + _k) * col_count) + j) as usize].2 = false;
+                    game_board[((i + _k) * col_count + j) as usize].2 = false;
                 } else if (i + _k) >= (row_count) {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
-                    continue;
                 } else if game_board[((i + _k) * col_count + j) as usize].0.phase == Phase::Solid {
                     game_board[cellpos].1.y = f32::abs((i - (i - _k)) as f32);
-                } else if game_board[cellpos].0.mass
-                    > game_board[((i + _k) * col_count + j) as usize].0.mass
+                    game_board[((i + _k) * col_count + j) as usize].2 = false;
+                }
+            }
+            if i < row_count - 1 && j < col_count - game_board[cellpos].1.y as i32 && j > 0 {
+                if (game_board[cellpos].0.mass
+                    <= game_board[((i + 1) * col_count + j) as usize].0.mass
+                    || game_board[((i + 1) * col_count + j) as usize].0.phase == Phase::Solid)
+                    && phase.get_coarseness() <= game_board[cellpos].3 && !game_board[cellpos].2
                 {
-                    // Powder-like behaviour here
+                    if game_board[(i * col_count + j + 1) as usize].0.mass
+                        < game_board[cellpos].0.mass && game_board[(i * col_count + j + 1) as usize].0.phase
+                        != Phase::Solid
+                        && game_board[((i+1) * col_count + j + 1) as usize].0.mass
+                            < game_board[cellpos].0.mass
+                    {
+                        game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
+                    } else if game_board[(i * col_count + j - 1) as usize].0.mass
+                        < game_board[cellpos].0.mass
+                        && game_board[(i * col_count + j + 1) as usize].0.phase
+                        != Phase::Solid
+                        && game_board[((i+1) * col_count + j - 1) as usize].0.mass
+                            < game_board[cellpos].0.mass
+                    {
+                        game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
+                    }
                 }
             }
             game_board[cellpos].2 = true;
@@ -236,7 +265,7 @@ static WATER: Material = Material {
 
 static SAND: Material = Material {
     mass: 1.682,
-    phase: Phase::Powder { coarseness: 0.2 },
+    phase: Phase::Powder { coarseness: 0.1 },
     durability: 50,
     flammability: 0.0,
     color: color_u8!(203, 189, 147, 255),
@@ -254,7 +283,7 @@ static WOOD: Material = Material {
 struct Material {
     mass: f32,       // Mass of a cm^3 volume of the material
     phase: Phase,    // Phase of the material for the implemented phases check the "Phase" enum
-    durability: i16, // Durability of a material - how much force it needs to disintegrate the material -> higher = more force
+    durability: i32, // Durability of a material - how much force it needs to disintegrate the material -> higher = more force
     //oxidizer: bool,
     flammability: f32, // Flammability of material -> higher number = more flammable (the flammability is calculated using normal atmospheric conditions (1 bar - 100 000 Pa pressure, 21% oxygen, 78% nitrogen))
     //conductor: bool,
@@ -263,7 +292,7 @@ struct Material {
 }
 
 #[derive(Copy, Clone)]
-struct Particle(Material, Vec2, bool);
+struct Particle(Material, Vec2, bool, f32);
 // 0 (Material) - 	Material of the particle
 // 1 (Vec2) - 		Vectors of the particle (x, y)
 // 2 (bool) -       Is it updated?
