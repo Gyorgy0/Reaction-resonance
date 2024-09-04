@@ -2,7 +2,7 @@ use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
 async fn main() {
-    let row_count = 100; // Number of rows
+    let row_count = 100; // Number of rows            ersgd
     let col_count = 100; // Number of collumns
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
     let mut is_stopped = false;
