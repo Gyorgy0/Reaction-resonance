@@ -98,13 +98,13 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let x = cursor_position.0 as u32 / CELLSIZE;
             let y = (cursor_position.1 - 60.0) as u32 / CELLSIZE;
             let material = if is_mouse_button_down(btn) {
-                SAND
+                WATER
             } else {
                 WOOD
             };
             game_board[(y * col_count as u32 + x) as usize] = Particle(
                 material,
-                vec2(0.0, 0.0),
+                vec2(0.0, 1.0),
                 true,
                 game_board[(y * col_count as u32 + x) as usize].3,
             );
@@ -173,10 +173,12 @@ fn solve_particle(
         Phase::Void => {}
 
         Phase::Solid => {}
-
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // POWDER PHYSICS
+        ///////////////////////////////////////////////////////////////////////////////////////////
         Phase::Powder { coarseness: _f32 } => {
             let cellpos: usize = (i * col_count + j) as usize;
-            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
+            game_board[cellpos].1.y += GRAVITY * frame_time;
             for _k in 0..(game_board[cellpos].1.y + 1.0) as i32 {
                 if (i + _k) < (row_count)
                     && game_board[cellpos].0.mass
@@ -192,25 +194,31 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
-            if i < row_count - 1 && j < col_count - game_board[cellpos].1.y as i32 && j > 0 {
+            if i < row_count - 1
+                && j < col_count -1
+                && j > 0
+                && game_board[cellpos].2
+            {
+                let rnd: u8 = rand::gen_range(0, 3);
                 if (game_board[cellpos].0.mass
                     <= game_board[((i + 1) * col_count + j) as usize].0.mass
                     || game_board[((i + 1) * col_count + j) as usize].0.phase == Phase::Solid)
-                    && (phase.get_coarseness()*4.0) >= game_board[cellpos].3
+                    && (phase.get_coarseness() * 4.0) >= game_board[cellpos].3
                 {
                     if game_board[(i * col_count + j + 1) as usize].0.mass
                         < game_board[cellpos].0.mass
-                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid 
+                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
                         && game_board[((i + 1) * col_count + j + 1) as usize].0.mass
                             < game_board[cellpos].0.mass
+                        && rnd == 1
                     {
                         game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
-                    } 
-                    else if game_board[(i * col_count + j - 1) as usize].0.mass
+                    } else if game_board[(i * col_count + j - 1) as usize].0.mass
                         < game_board[cellpos].0.mass
                         && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
                         && game_board[((i + 1) * col_count + j - 1) as usize].0.mass
                             < game_board[cellpos].0.mass
+                        && rnd == 2
                     {
                         game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
                     }
@@ -218,21 +226,54 @@ fn solve_particle(
             }
             game_board[cellpos].2 = true;
         }
-
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // LIQUID PHYSICS
+        //////////////////////////////////////////////////////////////////////////////////////////
         Phase::Liquid { viscosity: _f32 } => {
             let cellpos: usize = (i * col_count + j) as usize;
-            game_board[cellpos].1.y += game_board[cellpos].0.mass * GRAVITY * frame_time;
-            for _k in 0..game_board[cellpos].1.y as i32 {
+            game_board[cellpos].1.y += GRAVITY * frame_time;
+            for _k in 0..(game_board[cellpos].1.y + 1.0) as i32 {
                 if (i + _k) < (row_count)
                     && game_board[cellpos].0.mass
                         > game_board[((i + _k) * col_count + j) as usize].0.mass
                     && game_board[cellpos].2
                 {
                     game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
-                    game_board[(((i + _k) * col_count) + j) as usize].2 = false;
+                    game_board[((i + _k) * col_count + j) as usize].2 = false;
                 } else if (i + _k) >= (row_count) {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
-                    continue;
+                } else if game_board[((i + _k) * col_count + j) as usize].0.phase == Phase::Solid {
+                    game_board[cellpos].1.y = f32::abs((i - (i - _k)) as f32);
+                    game_board[((i + _k) * col_count + j) as usize].2 = false;
+                }
+            }
+            // Liquid-behaviour here using viscosity
+            let mut rnd: i32 = rand::gen_range(-1000, 1000);
+            game_board[cellpos].1.x = game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
+                if (i * col_count + j + _k) < (row_count * col_count) {
+                    if (j + rnd.signum() as i32 * _k) < col_count
+                        && (j + rnd.signum() as i32 * _k) > -1
+                        && game_board[(i * col_count + j + _k) as usize].0.phase == Phase::Void && game_board[(i * col_count + j + _k) as usize].0.mass <= game_board[cellpos].0.mass
+                        && game_board[cellpos].2
+                    {
+                        game_board.swap(
+                            cellpos,
+                            (i * col_count + j + (rnd.signum() * _k)) as usize,
+                        );
+                        game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize].2 =
+                            false;
+                    } else if (j + (rnd.signum() * _k)) >= col_count
+                        || (j + rnd.signum() * _k) <= 0
+                    {
+                        game_board[cellpos].1.x *= -1.0;
+                        break;
+                    }
+                    else if game_board[(i * col_count + j + _k) as usize].0.mass > game_board[cellpos].0.mass || game_board[(i * col_count + j + _k) as usize].0.phase == Phase::Solid 
+                    {
+                        game_board[cellpos].1.x *= -1.0;
+                        break;
+                    }
                 }
             }
             game_board[cellpos].2 = true;
@@ -258,7 +299,7 @@ static VOID: Material = Material {
 static WATER: Material = Material {
     mass: 1.0,
     phase: Phase::Liquid { viscosity: 1.0 },
-    durability: 10,
+    durability: 50,
     flammability: 0.0,
     color: BLUE,
 };
@@ -296,3 +337,4 @@ struct Particle(Material, Vec2, bool, f32);
 // 0 (Material) - 	Material of the particle
 // 1 (Vec2) - 		Vectors of the particle (x, y)
 // 2 (bool) -       Is it updated?
+// 3 (f32)  -       Random number associated with the cell (for calculating phase behaviour)
