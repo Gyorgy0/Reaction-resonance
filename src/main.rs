@@ -7,7 +7,7 @@ async fn main() {
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
     let mut is_stopped = false;
     loop {
-        clear_background(RED); //hello
+        clear_background(RED);
         if is_stopped {
             draw_text(
                 &format!("FPS: {0}", get_fps()),
