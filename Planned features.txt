@@ -1,9 +1,9 @@
 Physics / material types:
 
-- Powder physics
-- Liquid physics
-- Gas physics
 - Plasma physics
+- Pressure calculations
+- Diffusion for gases
+- Better liquid viscosity calculation
 - Explosives
 - Oxidizers
 - Acids
@@ -13,6 +13,7 @@ Physics / material types:
 
 
 UI:
+- Pause button
 - Reset button
 - Material buttons
 - Material searchbar
