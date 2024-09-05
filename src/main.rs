@@ -173,13 +173,16 @@ fn solve_particle(
         Phase::Void => {}
 
         Phase::Solid => {}
-        ///////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // POWDER PHYSICS
-        ///////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         Phase::Powder { coarseness: _f32 } => {
             let cellpos: usize = (i * col_count + j) as usize;
+            // Gravity simulation
             game_board[cellpos].1.y += GRAVITY * frame_time;
             for _k in 0..(game_board[cellpos].1.y + 1.0) as i32 {
+                // Falling and checking if there is a particle with a larger mass/density also it marks a particle
+                // after every pixel it falls, so it doesn't appear instantly at the bottom
                 if (i + _k) < (row_count)
                     && game_board[cellpos].0.mass
                         > game_board[((i + _k) * col_count + j) as usize].0.mass
@@ -187,14 +190,23 @@ fn solve_particle(
                 {
                     game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
-                } else if (i + _k) >= (row_count) {
+                } 
+                // Checks if the powder particle falls inside bounds, if not, then it corrects it's falling speed
+                else if (i + _k) >= (row_count) {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
-                } else if game_board[((i + _k) * col_count + j) as usize].0.phase == Phase::Solid {
+                }
+                // Checks, whether there is a solid particle in the path of the falling powder particle, if there
+                // is, then the falling speed is adjusted, also marks the particle so it doesn't appear on the
+                // solid particle instantly
+                else if game_board[((i + _k) * col_count + j) as usize].0.phase == Phase::Solid {
                     game_board[cellpos].1.y = f32::abs((i - (i - _k)) as f32);
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
+            // We are generating a random number between 0 and 3 (1,2) these numbers correspond the side which 
+            // the powder particle falls
             let rnd: u8 = rand::gen_range(0, 3);
+            // This checks if there is any obstruction to the left side, if not, then the particle falls to the left side
             if (i < row_count - 1
                 && j >= 0
                 && j < col_count - 1
@@ -209,6 +221,7 @@ fn solve_particle(
             {
                 game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
             }
+            // This checks if there is any obstruction to the right side, if not, then the particle falls to the left side
             if (i < row_count - 1
                 && j < col_count
                 && j > 0
@@ -223,6 +236,7 @@ fn solve_particle(
             {
                 game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
             }
+            // This marks that the particle's position has been calculated
             game_board[cellpos].2 = true;
         }
         ///////////////////////////////////////////////////////////////////////////////////////////
