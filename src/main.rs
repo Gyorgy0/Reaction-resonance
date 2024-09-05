@@ -98,9 +98,9 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let x = cursor_position.0 as u32 / CELLSIZE;
             let y = (cursor_position.1 - 60.0) as u32 / CELLSIZE;
             let material = if is_mouse_button_down(btn) {
-                WOOD
-            } else {
                 METHANE
+            } else {
+                SAND
             };
             game_board[(y * col_count as u32 + x) as usize] = Particle(
                 material,
@@ -271,10 +271,17 @@ fn solve_particle(
                         .0
                         .mass
                         >= game_board[cellpos].0.mass
-                        && game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
-                            .0
-                            .phase
-                            == Phase::Solid
+                        && std::mem::discriminant(
+                            &game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                                .0
+                                .phase,
+                        ) == std::mem::discriminant(&Phase::Powder { coarseness: 1.0 })
+                    {
+                        break;
+                    } else if game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                        .0
+                        .phase
+                        == Phase::Solid
                     {
                         break;
                     }
@@ -317,10 +324,30 @@ fn solve_particle(
                             .0
                             .mass
                             >= game_board[cellpos].0.mass
-                            && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
-                                .0
-                                .phase
-                                == Phase::Solid
+                            && std::mem::discriminant(
+                                &game_board
+                                    [((i + (rnd.signum() as i32 * _k)) * col_count + j) as usize]
+                                    .0
+                                    .phase,
+                            ) == std::mem::discriminant(&Phase::Liquid { viscosity: 1.0 })
+                        {
+                            break;
+                        } else if game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                            .0
+                            .mass
+                            >= game_board[cellpos].0.mass
+                            && std::mem::discriminant(
+                                &game_board
+                                    [((i + (rnd.signum() as i32 * _k)) * col_count + j) as usize]
+                                    .0
+                                    .phase,
+                            ) == std::mem::discriminant(&Phase::Powder { coarseness: 1.0 })
+                        {
+                            break;
+                        } else if game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                            .0
+                            .phase
+                            == Phase::Solid
                         {
                             break;
                         }
@@ -343,17 +370,34 @@ fn solve_particle(
                         {
                             game_board
                                 .swap(cellpos, (i * col_count + j + (rnd.signum() * _k)) as usize);
-                            game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
-                                .2 = false;
-                        } else if game_board
-                            [(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                            game_board[(i * col_count + j + (rnd.signum() * _k)) as usize].2 =
+                                false;
+                        } else if game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
                             .0
                             .mass
                             >= game_board[cellpos].0.mass
-                            && game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
-                                .0
-                                .phase
-                                == Phase::Solid
+                            && std::mem::discriminant(
+                                &game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                                    .0
+                                    .phase,
+                            ) == std::mem::discriminant(&Phase::Liquid { viscosity: 1.0 })
+                        {
+                            break;
+                        } else if game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                            .0
+                            .mass
+                            >= game_board[cellpos].0.mass
+                            && std::mem::discriminant(
+                                &game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                                    .0
+                                    .phase,
+                            ) == std::mem::discriminant(&Phase::Powder { coarseness: 1.0 })
+                        {
+                            break;
+                        } else if game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                            .0
+                            .phase
+                            == Phase::Solid
                         {
                             break;
                         }
