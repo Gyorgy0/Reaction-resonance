@@ -194,34 +194,35 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
+            let rnd: u8 = rand::gen_range(0, 3);
             if i < row_count - 1
-                && j < col_count -1
+                && j >= 0
+                && j < col_count - 1
+                && game_board[cellpos].2
+                && (phase.get_coarseness() * 4.0) >= game_board[cellpos].3
+            {
+                if game_board[(i * col_count + j + 1) as usize].0.mass < game_board[cellpos].0.mass
+                    && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
+                    && game_board[((i + 1) * col_count + j + 1) as usize].0.mass
+                        < game_board[cellpos].0.mass
+                    && rnd == 1
+                {
+                    game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
+                }
+            }
+            if i < row_count - 1
+                && j <= col_count - 1
                 && j > 0
                 && game_board[cellpos].2
+                && (phase.get_coarseness() * 4.0) >= game_board[cellpos].3
             {
-                let rnd: u8 = rand::gen_range(0, 3);
-                if (game_board[cellpos].0.mass
-                    <= game_board[((i + 1) * col_count + j) as usize].0.mass
-                    || game_board[((i + 1) * col_count + j) as usize].0.phase == Phase::Solid)
-                    && (phase.get_coarseness() * 4.0) >= game_board[cellpos].3
+                if game_board[(i * col_count + j - 1) as usize].0.mass < game_board[cellpos].0.mass
+                    && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
+                    && game_board[((i + 1) * col_count + j - 1) as usize].0.mass
+                        < game_board[cellpos].0.mass
+                    && rnd == 2
                 {
-                    if game_board[(i * col_count + j + 1) as usize].0.mass
-                        < game_board[cellpos].0.mass
-                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
-                        && game_board[((i + 1) * col_count + j + 1) as usize].0.mass
-                            < game_board[cellpos].0.mass
-                        && rnd == 1
-                    {
-                        game_board.swap(cellpos, ((i * col_count) + (j + 1)) as usize);
-                    } else if game_board[(i * col_count + j - 1) as usize].0.mass
-                        < game_board[cellpos].0.mass
-                        && game_board[(i * col_count + j + 1) as usize].0.phase != Phase::Solid
-                        && game_board[((i + 1) * col_count + j - 1) as usize].0.mass
-                            < game_board[cellpos].0.mass
-                        && rnd == 2
-                    {
-                        game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
-                    }
+                    game_board.swap(cellpos, ((i * col_count) + (j - 1)) as usize)
                 }
             }
             game_board[cellpos].2 = true;
@@ -248,30 +249,39 @@ fn solve_particle(
                 }
             }
             // Liquid-behaviour here using viscosity
-            let mut rnd: i32 = rand::gen_range(-1000, 1000);
-            game_board[cellpos].1.x = game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            let mut rnd: i32 = rand::gen_range(-col_count, col_count);
+            game_board[cellpos].1.x =
+                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
             for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
                 if (i * col_count + j + _k) < (row_count * col_count) {
-                    if (j + rnd.signum() as i32 * _k) < col_count
-                        && (j + rnd.signum() as i32 * _k) > -1
-                        && game_board[(i * col_count + j + _k) as usize].0.phase == Phase::Void && game_board[(i * col_count + j + _k) as usize].0.mass <= game_board[cellpos].0.mass
+                    if (j + rnd.signum() * _k) < col_count
+                        && (j + rnd.signum() * _k) > -1
+                        && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                            .0
+                            .phase
+                            == Phase::Void
+                        && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                            .0
+                            .mass
+                            <= game_board[cellpos].0.mass
                         && game_board[cellpos].2
                     {
-                        game_board.swap(
-                            cellpos,
-                            (i * col_count + j + (rnd.signum() * _k)) as usize,
-                        );
+                        game_board
+                            .swap(cellpos, (i * col_count + j + (rnd.signum() * _k)) as usize);
                         game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize].2 =
                             false;
-                    } else if (j + (rnd.signum() * _k)) >= col_count
-                        || (j + rnd.signum() * _k) <= 0
+                    } else if (j + (rnd.signum() * _k)) >= col_count || (j + rnd.signum() * _k) <= 0
                     {
-                        game_board[cellpos].1.x *= -1.0;
                         break;
-                    }
-                    else if game_board[(i * col_count + j + _k) as usize].0.mass > game_board[cellpos].0.mass || game_board[(i * col_count + j + _k) as usize].0.phase == Phase::Solid 
+                    } else if game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                        .0
+                        .mass
+                        > game_board[cellpos].0.mass
+                        && game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                            .0
+                            .phase
+                            == Phase::Solid
                     {
-                        game_board[cellpos].1.x *= -1.0;
                         break;
                     }
                 }
