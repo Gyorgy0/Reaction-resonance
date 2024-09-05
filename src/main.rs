@@ -98,9 +98,9 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let x = cursor_position.0 as u32 / CELLSIZE;
             let y = (cursor_position.1 - 60.0) as u32 / CELLSIZE;
             let material = if is_mouse_button_down(btn) {
-                WATER
+                WOOD
             } else {
-                SAND
+                METHANE
             };
             game_board[(y * col_count as u32 + x) as usize] = Particle(
                 material,
@@ -246,10 +246,9 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
-            // Liquid-behaviour here using viscosity
             let rnd: i32 = rand::gen_range(-col_count, col_count);
             game_board[cellpos].1.x =
-                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity()); // NEEDS TO BE REWORKED!!!
             for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
                 if (i * col_count + j + _k) < (row_count * col_count) {
                     if (j + rnd.signum() * _k) < col_count - 1
@@ -284,7 +283,85 @@ fn solve_particle(
             game_board[cellpos].2 = true;
         }
 
-        Phase::Gas { viscosity: _f32 } => {}
+        Phase::Gas { viscosity: _f32 } => {
+            let cellpos: usize = (i * col_count + j) as usize;
+            let orientation: i32 = rand::gen_range(-2, 2);
+            let mut rnd: i32 = rand::gen_range(-row_count, row_count);
+            game_board[cellpos].1.y =
+                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            rnd = rand::gen_range(-col_count, col_count);
+            game_board[cellpos].1.x =
+                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            if orientation == -1 {
+                for _k in 0..f32::abs(game_board[cellpos].1.y) as i32 {
+                    if i + (rnd.signum() * _k) < row_count && i + (rnd.signum() * _k) > 0 {
+                        if (i + rnd.signum() * _k) < row_count - 1
+                            && (i + rnd.signum() * _k) > 1
+                            && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                                .0
+                                .phase
+                                == Phase::Void
+                            && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                                .0
+                                .mass
+                                <= game_board[cellpos].0.mass
+                            && game_board[cellpos].2
+                        {
+                            game_board.swap(
+                                cellpos,
+                                ((i + (rnd.signum() * _k)) * col_count + j) as usize,
+                            );
+                            game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize].2 =
+                                false;
+                        } else if game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                            .0
+                            .mass
+                            >= game_board[cellpos].0.mass
+                            && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
+                                .0
+                                .phase
+                                == Phase::Solid
+                        {
+                            break;
+                        }
+                    }
+                }
+            } else if orientation == 1 {
+                for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
+                    if (i * col_count + j + _k) < (row_count * col_count) {
+                        if (j + rnd.signum() * _k) < col_count - 1
+                            && (j + rnd.signum() * _k) > 0
+                            && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                                .0
+                                .phase
+                                == Phase::Void
+                            && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
+                                .0
+                                .mass
+                                <= game_board[cellpos].0.mass
+                            && game_board[cellpos].2
+                        {
+                            game_board
+                                .swap(cellpos, (i * col_count + j + (rnd.signum() * _k)) as usize);
+                            game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                                .2 = false;
+                        } else if game_board
+                            [(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                            .0
+                            .mass
+                            >= game_board[cellpos].0.mass
+                            && game_board[(i * col_count + j + (rnd.signum() as i32 * _k)) as usize]
+                                .0
+                                .phase
+                                == Phase::Solid
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            game_board[cellpos].2 = true;
+        }
 
         Phase::Plasma { viscosity: _f32 } => {}
     }
@@ -299,6 +376,14 @@ static VOID: Material = Material {
     durability: -1,
     flammability: 0.0,
     color: color_u8!(0, 0, 0, 100),
+};
+
+static METHANE: Material = Material {
+    mass: 1.0,
+    phase: Phase::Gas { viscosity: 1.0 },
+    durability: 50,
+    flammability: 10.0,
+    color: YELLOW,
 };
 
 static WATER: Material = Material {
