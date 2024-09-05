@@ -295,8 +295,8 @@ fn solve_particle(
             if orientation == -1 {
                 for _k in 0..f32::abs(game_board[cellpos].1.y) as i32 {
                     if i + (rnd.signum() * _k) < row_count && i + (rnd.signum() * _k) > 0 {
-                        if (i + rnd.signum() * _k) < row_count - 1
-                            && (i + rnd.signum() * _k) > 1
+                        if (i + rnd.signum() * _k) < row_count
+                            && (i + rnd.signum() * _k) > 0
                             && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
                                 .0
                                 .phase
@@ -328,8 +328,8 @@ fn solve_particle(
                 }
             } else if orientation == 1 {
                 for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
-                    if (i * col_count + j + _k) < (row_count * col_count) {
-                        if (j + rnd.signum() * _k) < col_count - 1
+                    if j + (rnd.signum() * _k) < col_count && j + (rnd.signum() * _k) > 0 {
+                        if (j + rnd.signum() * _k) < col_count
                             && (j + rnd.signum() * _k) > 0
                             && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
                                 .0
