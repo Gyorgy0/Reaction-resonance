@@ -1,9 +1,10 @@
 use macroquad::prelude::*;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 #[macroquad::main("Particle Simulator")]
 async fn main() {
-    let row_count = 100; // Number of rows
-    let col_count = 100; // Number of collumns
+    let row_count = 200; // Number of rows
+    let col_count = 200; // Number of collumns
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
     let mut is_stopped = false;
     loop {
@@ -68,18 +69,18 @@ fn update_board(
     is_stopped: bool,
 ) -> Vec<Particle> {
     if !is_stopped {
-        for i in 0..row_count {
-            for j in 0..col_count {
-                solve_particle(
-                    game_board,
-                    game_board[(i * row_count + j) as usize].0.phase,
-                    row_count,
-                    col_count,
-                    i,
-                    j,
-                )
-            }
-        }
+        (0..row_count * col_count).into_iter().for_each(|count| {
+            let i = count / row_count;
+            let j = count % row_count;
+            solve_particle(
+                game_board,
+                game_board[(i * row_count + j) as usize].0.phase,
+                row_count,
+                col_count,
+                i,
+                j,
+            );
+        });
     }
     handle_mouse_input(game_board, row_count, col_count);
     game_board.to_vec()
@@ -132,8 +133,8 @@ enum Phase {
     Void,
     Solid,
     Powder { coarseness: f32 }, // Coarseness is the average diameter of a powder particle (between 0 and 1) (in cm), -> , the powder is less stackable it'll flow to the sides like a liquid
-    Liquid { viscosity: f32 },
-    Gas { viscosity: f32 },
+    Liquid { viscosity: f32 },  // Viscosity gives the rate, which the liquid spreads, for e.g. water has a viscosity of 1.0, the bigger the viscosity, the thicker the fluid
+    Gas { viscosity: f32 },     // Viscosity gives the rate, which the gas fills the space
     Plasma { viscosity: f32 },
 }
 
@@ -190,7 +191,7 @@ fn solve_particle(
                 {
                     game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
-                } 
+                }
                 // Checks if the powder particle falls inside bounds, if not, then it corrects it's falling speed
                 else if (i + _k) >= (row_count) {
                     game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
@@ -203,7 +204,7 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
-            // We are generating a random number between 0 and 3 (1,2) these numbers correspond the side which 
+            // We are generating a random number between 0 and 3 (1,2) these numbers correspond the side which
             // the powder particle falls
             let rnd: u8 = rand::gen_range(0, 3);
             // This checks if there is any obstruction to the left side, if not, then the particle falls to the left side
@@ -312,9 +313,9 @@ fn solve_particle(
                 game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
             if orientation == -1 {
                 for _k in 0..f32::abs(game_board[cellpos].1.y) as i32 {
-                    if i + (rnd.signum() * _k) < row_count && i + (rnd.signum() * _k) > 0 {
+                    if i + (rnd.signum() * _k) < row_count && i + (rnd.signum() * _k) > -1 {
                         if (i + rnd.signum() * _k) < row_count
-                            && (i + rnd.signum() * _k) > 0
+                            && (i + rnd.signum() * _k) > -1
                             && game_board[((i + (rnd.signum() * _k)) * col_count + j) as usize]
                                 .0
                                 .phase
@@ -362,9 +363,9 @@ fn solve_particle(
                 }
             } else if orientation == 1 {
                 for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
-                    if j + (rnd.signum() * _k) < col_count && j + (rnd.signum() * _k) > 0 {
+                    if j + (rnd.signum() * _k) < col_count && j + (rnd.signum() * _k) > -1 {
                         if (j + rnd.signum() * _k) < col_count
-                            && (j + rnd.signum() * _k) > 0
+                            && (j + rnd.signum() * _k) > -1
                             && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
                                 .0
                                 .phase
