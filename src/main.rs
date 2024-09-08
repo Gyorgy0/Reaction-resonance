@@ -1,10 +1,9 @@
 use macroquad::prelude::*;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 #[macroquad::main("Particle Simulator")]
 async fn main() {
     let row_count = 200; // Number of rows
-    let col_count = 200; // Number of collumns
+    let col_count = 300; // Number of collumns
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
     let mut is_stopped = false;
     loop {
@@ -22,7 +21,7 @@ async fn main() {
             // Displays the FPS of the game
         }
 
-        game_board = update_board(&mut game_board, row_count, col_count, is_stopped); // This function updates the state of the particles on the game_board
+        update_board(&mut game_board, row_count, col_count, is_stopped); // This function updates the state of the particles on the game_board
         draw_board(&game_board, row_count, col_count); // This function draws the game_board
 
         is_stopped = handle_key_inputs(&mut game_board, row_count, col_count, is_stopped); // This function monitors the pressed keys
@@ -34,47 +33,61 @@ fn setup_board(row_count: i32, col_count: i32) -> Vec<Particle> {
     let cell_count = row_count * col_count;
     let mut game_board: Vec<Particle> =
         vec![Particle(VOID, vec2(0.0, 0.0), false, 0.0); cell_count as usize];
-    for i in 0..row_count {
-        for j in 0..col_count {
-            game_board[(i * col_count + j) as usize] = Particle(
-                VOID,
-                vec2(0.0, 0.0),
-                false,
-                rand::gen_range(0.0_f32, 1.0_f32),
-            );
-        }
-    }
+    (0..row_count * col_count).for_each(|count| {
+        let i = count / col_count;
+        let j = count % col_count;
+        game_board[(i * col_count + j) as usize] = Particle(
+            VOID,
+            vec2(0.0, 0.0),
+            false,
+            rand::gen_range(0.0_f32, 1.0_f32),
+        );
+    });
     game_board
 }
 
 fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
-    for i in 0..row_count {
-        for j in 0..col_count {
-            let cell: Particle = game_board[((i * col_count) + j) as usize];
-            draw_rectangle(
-                (j as u32 * CELLSIZE) as f32 + 5.0,
-                (i as u32 * CELLSIZE) as f32 + 60.0,
-                CELLSIZE as f32,
-                CELLSIZE as f32,
-                cell.0.color,
-            )
-        }
-    }
+    let mut bytes: Vec<u8> = vec![];
+    (0..row_count * col_count).for_each(|count| {
+        let i = count / col_count;
+        let j = count % col_count;
+        let mut cell_colors = vec![
+            (game_board[(i * col_count + j) as usize].0.color.r * 255.0) as u8,
+            (game_board[(i * col_count + j) as usize].0.color.g * 255.0) as u8,
+            (game_board[(i * col_count + j) as usize].0.color.b * 255.0) as u8,
+            (game_board[(i * col_count + j) as usize].0.color.a * 255.0) as u8,
+        ];
+        bytes.append(&mut cell_colors);
+    });
+    let board_cells: Texture2D = Texture2D::from_rgba8(col_count as u16, row_count as u16, &bytes);
+    board_cells.set_filter(FilterMode::Nearest);
+    draw_texture_ex(
+        &board_cells,
+        5.,
+        60.,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Option::Some(vec2(
+                (col_count * CELLSIZE as i32) as f32,
+                (row_count * CELLSIZE as i32) as f32,
+            )),
+            source: Option::None,
+            rotation: 0.0,
+            flip_x: false,
+            flip_y: false,
+            pivot: Option::None,
+        },
+    );
 }
 
-fn update_board(
-    game_board: &mut [Particle],
-    row_count: i32,
-    col_count: i32,
-    is_stopped: bool,
-) -> Vec<Particle> {
+fn update_board(game_board: &mut [Particle], row_count: i32, col_count: i32, is_stopped: bool) {
     if !is_stopped {
-        (0..row_count * col_count).into_iter().for_each(|count| {
-            let i = count / row_count;
-            let j = count % row_count;
+        (0..row_count * col_count).for_each(|count| {
+            let i = count / col_count;
+            let j = count % col_count;
             solve_particle(
                 game_board,
-                game_board[(i * row_count + j) as usize].0.phase,
+                game_board[(i * col_count + j) as usize].0.phase,
                 row_count,
                 col_count,
                 i,
@@ -83,7 +96,6 @@ fn update_board(
         });
     }
     handle_mouse_input(game_board, row_count, col_count);
-    game_board.to_vec()
 }
 
 fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i32) {
@@ -101,7 +113,7 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let material = if is_mouse_button_down(btn) {
                 METHANE
             } else {
-                WOOD
+                WATER
             };
             game_board[(y * col_count as u32 + x) as usize] = Particle(
                 material,
@@ -133,8 +145,8 @@ enum Phase {
     Void,
     Solid,
     Powder { coarseness: f32 }, // Coarseness is the average diameter of a powder particle (between 0 and 1) (in cm), -> , the powder is less stackable it'll flow to the sides like a liquid
-    Liquid { viscosity: f32 },  // Viscosity gives the rate, which the liquid spreads, for e.g. water has a viscosity of 1.0, the bigger the viscosity, the thicker the fluid
-    Gas { viscosity: f32 },     // Viscosity gives the rate, which the gas fills the space
+    Liquid { viscosity: f32 }, // Viscosity gives the rate, which the liquid spreads, for e.g. water has a viscosity of 1.0, the bigger the viscosity, the thicker the fluid
+    Gas { viscosity: f32 },    // Viscosity gives the rate, which the gas fills the space
     Plasma { viscosity: f32 },
 }
 
@@ -189,12 +201,12 @@ fn solve_particle(
                         > game_board[((i + _k) * col_count + j) as usize].0.mass
                     && game_board[cellpos].2
                 {
-                    game_board.swap(cellpos, (((i + _k) * col_count) + j) as usize);
+                    game_board.swap(cellpos, ((i + _k) * col_count + j) as usize);
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
                 // Checks if the powder particle falls inside bounds, if not, then it corrects it's falling speed
                 else if (i + _k) >= (row_count) {
-                    game_board[cellpos].1.y = f32::abs((i - (row_count - 1)) as f32);
+                    game_board[cellpos].1.y = f32::abs((i - (col_count - 1)) as f32);
                 }
                 // Checks, whether there is a solid particle in the path of the falling powder particle, if there
                 // is, then the falling speed is adjusted, also marks the particle so it doesn't appear on the
@@ -261,13 +273,12 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
-            let rnd: i32 = rand::gen_range(-col_count, col_count);
-            game_board[cellpos].1.x =
-                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity()); // NEEDS TO BE REWORKED!!!
+            let rnd: i32 = rand::gen_range(-(2.3*col_count as f32) as i32, col_count);
+            game_board[cellpos].1.x = rnd as f32 * (1.0 / phase.get_viscosity());
             for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
-                if (i * col_count + j + _k) < (row_count * col_count) {
-                    if (j + rnd.signum() * _k) < col_count - 1
-                        && (j + rnd.signum() * _k) > 0
+                if j + (rnd.signum() * _k) < col_count && j + (rnd.signum() * _k) > -1 {
+                    if (j + rnd.signum() * _k) < col_count
+                        && (j + rnd.signum() * _k) > -1
                         && game_board[(i * col_count + j + (rnd.signum() * _k)) as usize]
                             .0
                             .phase
@@ -306,11 +317,9 @@ fn solve_particle(
             let cellpos: usize = (i * col_count + j) as usize;
             let orientation: i32 = rand::gen_range(-2, 2);
             let mut rnd: i32 = rand::gen_range(-row_count, row_count);
-            game_board[cellpos].1.y =
-                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            game_board[cellpos].1.y = rnd as f32 * (1.0 / phase.get_viscosity());
             rnd = rand::gen_range(-col_count, col_count);
-            game_board[cellpos].1.x =
-                game_board[cellpos].3 * rnd as f32 * (1.0 / phase.get_viscosity());
+            game_board[cellpos].1.x = rnd as f32 * (1.0 / phase.get_viscosity());
             if orientation == -1 {
                 for _k in 0..f32::abs(game_board[cellpos].1.y) as i32 {
                     if i + (rnd.signum() * _k) < row_count && i + (rnd.signum() * _k) > -1 {

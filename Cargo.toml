@@ -7,3 +7,8 @@ edition = "2021"
 macroquad = "0.4.5"
 rand = "0.8.5"
 rayon = "1.5.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
