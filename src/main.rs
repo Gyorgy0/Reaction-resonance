@@ -1,3 +1,5 @@
+use std::ops::{DerefMut, Not};
+
 use macroquad::prelude::*;
 
 #[macroquad::main("Particle Simulator")]
@@ -5,10 +7,11 @@ async fn main() {
     let row_count = 200; // Number of rows
     let col_count = 300; // Number of collumns
     let mut game_board = setup_board(row_count, col_count); // Initializes the game_board
-    let mut is_stopped = false;
+    let mut is_paused = false;
+    let mut selected_material = VOID;
     loop {
         clear_background(RED);
-        if is_stopped {
+        if is_paused {
             draw_text(
                 &format!("FPS: {0}", get_fps()),
                 40.0,
@@ -16,15 +19,33 @@ async fn main() {
                 55.0,
                 color_u8!(150, 0, 0, 255),
             ); // Displays the FPS of the game
-        } else if !is_stopped {
+        } else if !is_paused {
             draw_text(&format!("FPS: {0}", get_fps()), 40.0, 40.0, 55.0, YELLOW);
             // Displays the FPS of the game
         }
 
-        update_board(&mut game_board, row_count, col_count, is_stopped); // This function updates the state of the particles on the game_board
+        update_board(&mut game_board, row_count, col_count, is_paused); // This function updates the state of the particles on the game_board
         draw_board(&game_board, row_count, col_count); // This function draws the game_board
 
-        is_stopped = handle_key_inputs(&mut game_board, row_count, col_count, is_stopped); // This function monitors the pressed keys
+        draw_clear_button(
+            &mut game_board,
+            row_count,
+            col_count,
+            (col_count * CELLSIZE as i32) as f32 + 15.0,
+            60.0,
+        );
+        start_pause_button(
+            &mut is_paused,
+            (col_count * CELLSIZE as i32) as f32 + 15.0,
+            100.0,
+        );
+        draw_material_buttons(
+            &mut selected_material,
+            (col_count * CELLSIZE as i32) as f32 + 15.0,
+            100.0,
+        );
+
+        handle_key_inputs(&mut game_board, row_count, col_count, &mut is_paused); // This function monitors the pressed keys
         next_frame().await;
     }
 }
@@ -36,30 +57,26 @@ fn setup_board(row_count: i32, col_count: i32) -> Vec<Particle> {
     (0..row_count * col_count).for_each(|count| {
         let i = count / col_count;
         let j = count % col_count;
-        game_board[(i * col_count + j) as usize] = Particle(
-            VOID,
-            vec2(0.0, 0.0),
-            false,
-            rand::gen_range(0.0_f32, 1.0_f32),
-        );
+        game_board[(i * col_count + j) as usize] =
+            Particle(VOID, vec2(0.0, 0.0), false, rand::gen_range(0.0, 1.0));
     });
     game_board
 }
 
 fn draw_board(game_board: &[Particle], row_count: i32, col_count: i32) {
-    let mut bytes: Vec<u8> = vec![];
-    (0..row_count * col_count).for_each(|count| {
-        let i = count / col_count;
-        let j = count % col_count;
-        let mut cell_colors = vec![
-            (game_board[(i * col_count + j) as usize].0.color.r * 255.0) as u8,
-            (game_board[(i * col_count + j) as usize].0.color.g * 255.0) as u8,
-            (game_board[(i * col_count + j) as usize].0.color.b * 255.0) as u8,
-            (game_board[(i * col_count + j) as usize].0.color.a * 255.0) as u8,
-        ];
-        bytes.append(&mut cell_colors);
-    });
-    let board_cells: Texture2D = Texture2D::from_rgba8(col_count as u16, row_count as u16, &bytes);
+    let f: Vec<_> = game_board
+        .iter()
+        .flat_map(|particle| {
+            let color = vec![
+                (particle.0.color.r * 255.0) as u8,
+                (particle.0.color.g * 255.0) as u8,
+                (particle.0.color.b * 255.0) as u8,
+                (particle.0.color.a * 255.0) as u8,
+            ];
+            color
+        })
+        .collect();
+    let board_cells: Texture2D = Texture2D::from_rgba8(col_count as u16, row_count as u16, &f);
     board_cells.set_filter(FilterMode::Nearest);
     draw_texture_ex(
         &board_cells,
@@ -113,7 +130,7 @@ fn handle_mouse_input(game_board: &mut [Particle], row_count: i32, col_count: i3
             let material = if is_mouse_button_down(btn) {
                 METHANE
             } else {
-                WATER
+                VOID
             };
             game_board[(y * col_count as u32 + x) as usize] = Particle(
                 material,
@@ -129,16 +146,66 @@ fn handle_key_inputs(
     game_board: &mut Vec<Particle>,
     row_count: i32,
     col_count: i32,
-    mut is_stopped: bool,
-) -> bool {
+    is_paused: &mut bool,
+) {
     if is_key_pressed(KeyCode::R) {
         *game_board = setup_board(row_count, col_count);
     }
     if is_key_pressed(KeyCode::Space) {
-        is_stopped = !is_stopped;
+        *is_paused = is_paused.not();
     }
-    is_stopped
 }
+
+fn draw_clear_button(
+    game_board: &mut Vec<Particle>,
+    row_count: i32,
+    col_count: i32,
+    x: f32,
+    y: f32,
+) {
+    let (btn_width, btn_height): (f32, f32) = (100.0, 30.0);
+    let mouse_pos: (f32, f32) = mouse_position();
+    let mouse_pressed: bool = is_mouse_button_pressed(MouseButton::Left);
+
+    if mouse_pos.0 > x
+        && mouse_pos.0 < x + btn_width
+        && mouse_pos.1 > y
+        && mouse_pos.1 < y + btn_height
+        && mouse_pressed
+    {
+        *game_board = setup_board(row_count, col_count);
+    }
+
+    draw_rectangle(x, y, btn_width, btn_height, DARKGRAY);
+    draw_text("Clear", x + 10.0, y + 20.0, 20.0, WHITE);
+}
+
+fn is_mouse_over_button(x: f32, y: f32, width: f32, height: f32) -> bool {
+    let (mouse_x, mouse_y): (f32, f32) = mouse_position();
+    mouse_x > x && mouse_x < x + width && mouse_y > y && mouse_y < y + height
+}
+
+pub fn start_pause_button(is_paused: &mut bool, x: f32, y: f32) {
+    let button_width: f32 = 100.0;
+    let button_height: f32 = 30.0;
+    let button_color: Color = if *is_paused {
+        color_u8!(150, 0, 0, 255)
+    } else {
+        GREEN
+    };
+    let label: &str = if *is_paused { "Start" } else { "Pause" };
+
+    draw_rectangle(x, y, button_width, button_height, button_color);
+    draw_text(label, x + 10.0, y + 20.0, 20.0, WHITE);
+
+    if is_mouse_button_pressed(MouseButton::Left)
+        && is_mouse_over_button(x, y, button_width, button_height)
+    {
+        *is_paused = !*is_paused;
+    }
+}
+
+pub fn draw_material_buttons(selected_material: &mut Material, x: f32, y: f32) {}
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 enum Phase {
@@ -273,7 +340,7 @@ fn solve_particle(
                     game_board[((i + _k) * col_count + j) as usize].2 = false;
                 }
             }
-            let rnd: i32 = rand::gen_range(-(2.3*col_count as f32) as i32, col_count);
+            let rnd: i32 = rand::gen_range(-(2.3 * col_count as f32) as i32, col_count);
             game_board[cellpos].1.x = rnd as f32 * (1.0 / phase.get_viscosity());
             for _k in 0..f32::abs(game_board[cellpos].1.x) as i32 {
                 if j + (rnd.signum() * _k) < col_count && j + (rnd.signum() * _k) > -1 {
