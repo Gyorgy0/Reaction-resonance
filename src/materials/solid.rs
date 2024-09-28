@@ -16,10 +16,11 @@ pub struct Material {
     color: Color, // Color of the material
 }*/
 
+// This is the only material that has the Void phase, but it's inside the solid materials, because it acts as such, but other materials ignore it
 pub static VOID: crate::Material = crate::Material {
     name: "Void",
     mass: 0.0,
-    phase: Phase::Solid,
+    phase: Phase::Void,
     durability: -1,
     flammability: 0.0,
     color: color_u8!(0, 0, 0, 100),
