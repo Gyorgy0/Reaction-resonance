@@ -9,6 +9,7 @@ rand = "0.8.5"
 rayon = "1.5.1"
 
 [profile.release]
+debug = true
 lto = true
 codegen-units = 1
 panic = "abort"
