@@ -63,6 +63,7 @@ async fn main() {
     }
 }
 
+#[inline(always)]
 fn draw_board(game_board: &Board) {
     let f: Vec<_> = game_board
         .contents
@@ -98,14 +99,16 @@ fn draw_board(game_board: &Board) {
     );
 }
 
+#[inline(always)]
 fn update_board(game_board: &mut Board, selected_material: &mut Material, is_stopped: bool) {
     let row_count = game_board.height as i32;
     let col_count: i32 = game_board.width as i32;
+    let frame_time = get_frame_time();
     if !is_stopped {
         (0..row_count * col_count).for_each(|count| {
             let i = count / col_count;
             let j = count % col_count;
-            game_board.solve_particle(game_board.contents[count as usize].0.phase, i, j);
+            game_board.solve_particle(game_board.contents[count as usize].0.phase, i, j, frame_time);
         });
     }
     handle_mouse_input(game_board, selected_material, row_count, col_count);
@@ -303,16 +306,16 @@ impl Board {
         self.height = height;
         self.contents = vec![
             Particle(materials::solid::VOID, vec2(0.0, 0.0), false, 0.0);
-            (&self.width * &self.height) as usize
+            (&(self.width as usize) * &(self.height as usize))
         ];
-        (0..self.width * self.height).for_each(|count| {
-            self.contents[count as usize].3 = rand::gen_range(0.0, 1.0);
+        (0..self.width as usize * self.height as usize).for_each(|count| {
+            self.contents[count].3 = rand::gen_range(0.0, 1.0);
         });
     }
-    fn solve_particle(&mut self, phase: Phase, i: i32, j: i32) {
+    #[inline(always)]
+    fn solve_particle(&mut self, phase: Phase, i: i32, j: i32, frame_time: f32) {
         let row_count: i32 = self.height as i32;
         let col_count: i32 = self.width as i32;
-        let frame_time = get_frame_time();
         match phase {
             Phase::Void => {}
 
